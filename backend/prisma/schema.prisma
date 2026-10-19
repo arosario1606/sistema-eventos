@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// PostgreSQL de la intranet. Todas las tablas del módulo viven en su propio esquema
+// (el que indique DATABASE_URL con ?schema=eventos); no se tocan los esquemas de otros sistemas.
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Sede: sedes elegibles para eventos. idSede = id de Locations en la intranet.
+//    `active = false` las oculta al crear eventos nuevos sin perder el historial.
+model Sede {
+  idSede    Int      @id @map("id_sede")
+  name      String   @db.VarChar(150)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  userPermissions UserBranchPermission[]
+  events          Event[]
+
+  @@map("Sede")
+}
+
+// 2. User_branch_permission: sedes sobre las que un usuario puede crear y gestionar eventos.
+//    userId = Users.id de la intranet (viene en el token); userEmail es solo informativo.
+model UserBranchPermission {
+  userId    Int      @map("user_id")
+  userEmail String   @map("user_email") @db.VarChar(150)
+  idSede    Int      @map("id_sede")
+  createdBy String   @map("created_by") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  sede Sede @relation(fields: [idSede], references: [idSede], onDelete: Cascade)
+
+  @@id([userId, idSede])
+  @@map("User_branch_permission")
+}
+
+// 3. Event: un evento de una sede (antes: columnas evento, fecha, sede y numero_evento de ta_asistencia).
+model Event {
+  idEvent   Int      @id @default(autoincrement()) @map("id_event")
+  name      String   @db.VarChar(150)
+  eventDate DateTime @map("event_date") @db.Date
+  idSede    Int      @map("id_sede")
+  createdBy String   @map("created_by") @db.VarChar(100)
+  updatedBy String?  @map("updated_by") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  sede      Sede       @relation(fields: [idSede], references: [idSede])
+  attendees Attendee[]
+
+  @@index([idSede])
+  @@map("Event")
+}
+
+// 4. Attendee: una persona invitada a un evento y si asistió.
+//    Equivalencias con ta_asistencia: nombre -> fullName, empresa -> company, telefono (que en realidad guardaba
+//    el cargo) -> jobTitle, brasalete (que en realidad guardaba la cédula) -> cedula, asiento -> seat,
+//    empresa_grupo -> companyGroup, asistio ('S'/'N'/NULL) -> attended (booleano).
+model Attendee {
+  idAttendee   Int       @id @default(autoincrement()) @map("id_attendee")
+  idEvent      Int       @map("id_event")
+  cedula       String    @db.VarChar(50)
+  fullName     String    @map("full_name") @db.VarChar(150)
+  company      String?   @db.VarChar(150)
+  jobTitle     String?   @map("job_title") @db.VarChar(150)
+  seat         String?   @db.VarChar(40)
+  companyGroup Int?      @map("company_group")
+  attended     Boolean   @default(false)
+  attendedAt   DateTime? @map("attended_at")
+  attendedBy   String?   @map("attended_by") @db.VarChar(100)
+  createdBy    String    @map("created_by") @db.VarChar(100)
+  updatedBy    String?   @map("updated_by") @db.VarChar(100)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  event Event @relation(fields: [idEvent], references: [idEvent], onDelete: Cascade)
+
+  @@unique([idEvent, cedula])
+  @@map("Attendee")
+}

@@ -1,0 +1,30 @@
+{
+  "name": "backend-eventos",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test \"test/unit/*.test.js\"",
+    "test:integration": "prisma migrate deploy && node --test --test-concurrency=1 \"test/integration/*.test.js\"",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "seed:dev": "node prisma/seed.dev.js",
+    "sync:sedes": "node prisma/sync.js sedes",
+    "dev:token": "node scripts/dev-token.js",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.0.0",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "prisma": "^6.0.0"
+  }
+}

@@ -1,0 +1,19 @@
+# Servicio de eventos de la intranet. Mismo estilo que intranet-api-auth y que el servicio de sorteos.
+# Uso (siempre con el archivo de variables, para no mezclarlo con el .env de desarrollo):
+#   docker compose --env-file .env.docker up --build -d
+# El gateway lo busca en DOCKER_SERVER_IP:3070 (EVENTS_SERVICE_PORT en events.gateway.routes.js).
+services:
+  intranet-events-backend:
+    container_name: intranet-events-backend
+    environment:
+      - TZ=${TZ:-America/Caracas}
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICES_SECRET_KEY=${SERVICES_SECRET_KEY}
+    ports:
+      - "3070:3000"
+    # En Linux permite llegar a un Postgres del propio servidor como host.docker.internal (Docker Desktop ya lo trae).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    build: .
