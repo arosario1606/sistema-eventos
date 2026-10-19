@@ -5,17 +5,23 @@ Backend: Node + Express + Prisma sobre **PostgreSQL** (esquema propio `eventos`)
 `intranet-frontend`). Reemplaza la tabla `ta_asistencia` del sistema anterior (MariaDB, `reportes_pro`) y se integra detrás del
 gateway de la intranet: ver [`docs/integracion/INTEGRACION.md`](docs/integracion/INTEGRACION.md).
 
-## Flujo del sistema (una sola pantalla)
+## Flujo del sistema (dos módulos, como en sorteos)
 
-1. **Nuevo evento:** nombre, fecha y sede (solo sedes activas con permiso del usuario).
-2. **Subir el CSV de asistentes.** Al cargarse, la lista aparece debajo. Las filas inválidas se listan con su número de línea
+**Módulo 1 — Registrar evento** (quien administra el evento):
+1. **Registrar evento:** nombre, fecha y sede (solo sedes activas con permiso del usuario).
+2. **Cargar asistentes:** se sube el CSV; el resumen muestra cuántos entraron y las filas inválidas (con su número de línea),
    sin impedir cargar el resto.
-3. **Marcar asistencia:** cada check se guarda **al instante** en la base (`Attendee.attended`, con quién y cuándo). La lista se
-   actualiza sola cada 10 s para ver lo que marcan otras puertas o equipos. Hay buscador, «Marcar a todos como asistentes»
-   (con confirmación) y «Agregar asistente» para quien no venía en el archivo.
-4. **Exportar asistentes (CSV):** descarga solo a quienes tienen el check.
-5. **Finalizar evento:** botón con confirmación (sin escribir nada). Ofrece antes «Descargar asistentes (CSV)» y luego
-   **borra de forma definitiva** el evento y su lista: el CSV es la única copia que queda.
+3. **Finalizar evento:** botón con confirmación (sin escribir nada). Ofrece antes «Descargar asistentes (CSV)» y luego
+   **borra de forma definitiva** el evento y su lista: el CSV es la única copia que queda. Un evento que no se finaliza
+   queda guardado en la base.
+
+**Módulo 2 — Asistencia** (quien atiende la puerta; pensado para ir rápido, incluso desde un teléfono o una tablet):
+- Abre solo el **último evento usado** en ese navegador y deja el cursor en el buscador.
+- Contador grande «presentes / invitados», buscador (nombre, cédula, empresa, cargo o asiento) y filtros Todos / Pendientes / Presentes.
+- Cada check se guarda **al instante** en la base (`Attendee.attended`, con quién y cuándo). Se toca la celda completa (en pantallas
+  anchas) o la tarjeta (en teléfono). La lista se actualiza sola cada 10 s para ver lo que marcan las otras puertas.
+- Además: «Agregar asistente» (para quien no venía en el archivo o se rechazó), «Marcar a todos como asistentes» (con confirmación)
+  y «Exportar asistentes (CSV)».
 
 Volver a subir el archivo **actualiza** nombre, empresa, cargo, asiento y grupo por cédula, agrega a los nuevos y **nunca toca
 las asistencias ya marcadas ni borra a quien falte** en el archivo.
@@ -49,7 +55,7 @@ Ejemplo con datos ficticios en `docs/ejemplos/asistentes_ejemplo.csv` (40 válid
 
 | Tabla del módulo | Origen |
 |---|---|
-| `Sede` | Copia de `intranet_api_auth_manager."Locations"` (`npm run sync:sedes`). `active = false` oculta una sede al crear eventos nuevos sin perder el historial. |
+| `Sede` | Copia de `intranet_api_auth_manager."Locations"` con `npm run sync:sedes` (**no es automático**: las migraciones solo crean las tablas). `seed:dev` también la ejecuta. `active = false` oculta una sede al crear eventos nuevos sin perder el historial. |
 | `User_branch_permission` | Propia, **se carga a mano por SQL**: `user_id` (= `Users.id` de la intranet), `user_email` (informativo) e `id_sede`. Quien no tenga filas aquí no ve ni puede marcar ningún evento. |
 | `Event`, `Attendee` | Propias. No hay copia de empleados: nombre y cargo se guardan en la fila del asistente tal como vienen del archivo. |
 
@@ -71,7 +77,7 @@ curl http://localhost:3070/health                       # {"status":"ok"}
 
 ## Puesta en marcha local
 
-Requisitos: Node 22 y un PostgreSQL con la base `intranet` (con el esquema `intranet_api_auth_manager` si se usará el `sync`).
+Requisitos: Node 22 y un PostgreSQL con la base `intranet` (con el esquema `intranet_api_auth_manager` para copiar las sedes reales).
 
 ```bash
 # Backend
@@ -79,8 +85,9 @@ cd backend
 cp .env.example .env          # ajustar DATABASE_URL, SERVICES_SECRET_KEY (de PRUEBA), DEV_USER_ID y DEV_USER_EMAIL
 npm install
 npm run migrate:deploy        # crea el esquema "eventos" y sus tablas (versionadas en prisma/migrations)
-npm run sync:sedes            # copia las sedes desde Locations (OMITIR si tu PostgreSQL local no tiene la base de la intranet)
-npm run seed:dev              # SOLO pruebas: si no hay sedes crea 2 de prueba, y da permisos al usuario de desarrollo
+npm run sync:sedes            # copia las sedes REALES desde intranet_api_auth_manager."Locations"
+npm run seed:dev              # SOLO pruebas: repite esa copia y da permisos al usuario de desarrollo en las sedes activas
+                              # (solo si la base NO tiene la tabla Locations crea 2 sedes de prueba: ids 9001 y 9002)
 npm run dev                   # http://localhost:3000
 
 # Frontend (otra terminal)
@@ -115,12 +122,12 @@ sincronización de sedes.
 
 ## Guía de prueba manual
 
-1. Abrir http://localhost:5173 → **Nuevo evento**: nombre, fecha y sede → *Crear evento*. Queda seleccionado.
-2. Subir `docs/ejemplos/asistentes_ejemplo.csv`: «40 asistentes nuevos y 0 actualizados» y «2 fila(s) con error» (líneas 42 y 43).
-3. Marcar varios checks. Recargar la página y volver a elegir el evento: las marcas siguen ahí. En otra pestaña (o con otro usuario)
-   marcar a alguien: en menos de 10 s aparece en la primera sin recargar.
-4. Probar el buscador (por nombre, cédula, empresa, cargo o asiento), «Agregar asistente» (una cédula repetida da aviso) y
-   «Marcar a todos como asistentes» (Cancelar no cambia nada).
-5. «Exportar asistentes (CSV)» descarga `asistentes evento <nombre>.csv` solo con quienes tienen el check.
-6. «Finalizar evento»: descargar el CSV, confirmar. Tras la animación el evento desaparece del selector y en la base no queda
-   ninguna fila suya.
+1. Abrir http://localhost:5173 → **Registrar evento**: nombre, fecha y sede → *Crear evento*. Queda seleccionado.
+2. Subir `docs/ejemplos/asistentes_ejemplo.csv`: «40 asistentes nuevos y 0 actualizados», «2 fila(s) con error» (líneas 42 y 43)
+   e «Invitados cargados: 40».
+3. Ir a **Asistencia**: el evento se abre solo y el cursor está en el buscador. Marcar varios; recargar la página: las marcas siguen ahí.
+   En otra pestaña (o con otro usuario) marcar a alguien: en menos de 10 s aparece en la primera sin recargar.
+4. Probar los filtros, «Agregar asistente» (una cédula repetida da aviso), «Marcar a todos» (Cancelar no cambia nada) y
+   «Exportar asistentes (CSV)». Probar también con una ventana angosta (teléfono): la lista pasa a tarjetas.
+5. Volver a **Registrar evento** → «Finalizar evento»: descargar el CSV y confirmar. El evento desaparece de ambos módulos y en la
+   base no queda ninguna fila suya.

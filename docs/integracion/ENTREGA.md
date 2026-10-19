@@ -11,7 +11,7 @@ documento fija el **orden**, lo que debe **proveer** el administrador y cómo se
 | Clave del rol `eventos_app` | `DATABASE_URL` | La define quien ejecute el paso 2 |
 | `SERVICES_SECRET_KEY` de producción | Verificar `x-auth-token` | El MISMO valor de `intranet-api-auth/.env`. No se sube al repo |
 | Puerto libre del servidor para el módulo | Publicar el contenedor | 3070; debe coincidir con `EVENTS_SERVICE_PORT` en el gateway (3060 es de sorteos) |
-| Entrada de menú y permiso de pantalla de eventos | Que los usuarios lleguen a `/events` | No existe todavía: la crea quien administra `intranet-frontend` |
+| Entradas de menú y permisos de pantalla | Que los usuarios lleguen a `/eventsreg` (Registrar evento) y `/eventsassist` (Asistencia) | No existen todavía: las crea quien administra `intranet-frontend` |
 | Quién carga los permisos por sede | `User_branch_permission` | Se cargan por SQL manual (paso 6) |
 
 ## 2. Base de datos: rol propio con permisos mínimos
@@ -40,6 +40,8 @@ Comprobar: `docker ps` en `healthy`; `docker logs intranet-events-backend` termi
 `curl http://localhost:3070/health` responde `{"status":"ok"}`. Las migraciones se aplican solas al arrancar.
 
 ## 4. Datos iniciales
+
+Las migraciones solo crean las tablas: **las sedes no se copian solas**. Hay que ejecutar la copia desde `Locations`:
 
 ```bash
 docker exec intranet-events-backend npm run sync:sedes
@@ -71,18 +73,18 @@ Conviene acordar quién ejecuta estos cambios cuando el personal cambie.
 
 ## 7. Frontend de la intranet
 
-Copiar la carpeta `events/` y la ruta `events.jsx` según `INTEGRACION.md`, crear la entrada de menú hacia `/events` y recompilar.
+Copiar la carpeta `events/` y las rutas `eventsreg.jsx` y `eventsassist.jsx` según `INTEGRACION.md`, crear las dos entradas de menú y recompilar.
 **No** copiar `__root.jsx`, `_content.jsx` ni `index.jsx`.
 
 ## 8. Cómo se sabe que quedó bien
 
 Con una sesión real de la intranet y un usuario con permisos:
 
-1. «Nuevo evento» ofrece sus sedes y crea un evento.
+1. «Registrar evento» ofrece sus sedes (las reales de `Locations`) y crea un evento.
 2. Se sube `docs/ejemplos/asistentes_ejemplo.csv` (40 válidos y 2 filas con error).
-3. Los checks se guardan al instante, siguen ahí tras recargar, y una marca hecha desde otro equipo aparece sola en menos de 10 s.
+3. «Asistencia» abre el evento, los checks se guardan al instante, siguen ahí tras recargar, y una marca hecha desde otro equipo aparece sola en menos de 10 s.
 4. «Exportar asistentes (CSV)» descarga solo a quienes tienen el check.
-5. «Finalizar evento» descarga el CSV, borra el evento y deja la base sin sus filas.
+5. «Finalizar evento» (en Registrar evento) descarga el CSV, borra el evento y deja la base sin sus filas.
 6. Un usuario **sin** permiso de sede no ve el evento; uno sin la ruta en su grupo recibe 403; uno sin sesión es redirigido al inicio.
 
 ## 9. Seguridad y operación

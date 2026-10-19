@@ -36,6 +36,28 @@ test('sync:sedes copia las sedes de Locations y respeta las desactivadas a mano'
   assert.equal(caracas.active, false, 'pero NO se reactiva una sede desactivada a mano');
 });
 
+const seed = (env = {}) => run('node', ['prisma/seed.dev.js'], {
+  env: { ...process.env, INTRANET_AUTH_SCHEMA: AUTH, DEV_USER_ID: '77', DEV_USER_EMAIL: 'dev@example.com', ...env },
+});
+
+test('seed:dev copia las sedes REALES de Locations (sin crear sedes de prueba) y da permiso sobre las activas', async () => {
+  await resetDb();
+  const { stdout } = await seed();
+  assert.match(stdout, /Sedes copiadas desde Locations/);
+  const sedes = await prisma.sede.findMany({ orderBy: { idSede: 'asc' } });
+  assert.ok(sedes.every((s) => s.idSede < 9000), 'no hay sedes de prueba 9001/9002 donde existe Locations');
+  assert.equal(sedes.length, 3);
+  const perms = await prisma.userBranchPermission.findMany({ where: { userId: 77 }, orderBy: { idSede: 'asc' } });
+  assert.deepEqual(perms.map((p) => p.idSede), [1, 2], 'solo las sedes activas (la 3 está inactiva)');
+});
+
+test('seed:dev solo crea sedes de PRUEBA cuando la base no tiene la tabla Locations', async () => {
+  await resetDb();
+  const { stdout } = await seed({ INTRANET_AUTH_SCHEMA: 'esquema_que_no_existe' });
+  assert.match(stdout, /2 sedes de PRUEBA/);
+  assert.deepEqual((await prisma.sede.findMany({ orderBy: { idSede: 'asc' } })).map((s) => s.idSede), [9001, 9002]);
+});
+
 test('rechaza nombres de esquema peligrosos', async () => {
   await assert.rejects(run('node', ['prisma/sync.js', 'sedes'], { env: { ...process.env, INTRANET_AUTH_SCHEMA: 'x"; DROP TABLE "Sede"; --' } }));
   assert.ok(await prisma.sede.count() > 0);

@@ -6,7 +6,7 @@ export default function EventSelect({ events, value, onChange, children }) {
   return (
     <div className={ui.toolbar}>
       <select
-        className={ui.input}
+        className={`${ui.input} w-full min-w-0 sm:w-auto sm:max-w-full`}
         aria-label="Evento"
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}

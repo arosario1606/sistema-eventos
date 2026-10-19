@@ -4,8 +4,8 @@ import { ui } from './ui'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
-// Registrar evento: nombre, fecha y la sede donde se realiza (solo sedes activas con permiso del usuario).
-export default function NewEventForm({ sedes, onCreated, onCancel }) {
+// Paso 1: nombre, fecha y la sede donde se realiza el evento (solo sedes activas con permiso del usuario).
+export default function NewEventForm({ sedes, onCreated }) {
   const [name, setName] = useState('')
   const [date, setDate] = useState(today())
   const [idSede, setIdSede] = useState(sedes.length === 1 ? String(sedes[0].idSede) : '')
@@ -18,20 +18,22 @@ export default function NewEventForm({ sedes, onCreated, onCancel }) {
     setSaving(true)
     try {
       const event = await api.crearEvento({ name, eventDate: date, idSede: Number(idSede) })
+      setName('')
       onCreated(event.idEvent)
     } catch (err) {
       setError(err.message)
+    } finally {
       setSaving(false)
     }
   }
 
   return (
-    <form className="my-4 rounded-md border border-gray-200 p-4" onSubmit={submit}>
-      <h3 className="font-semibold text-gray-800">Nuevo evento</h3>
+    <form className={ui.card} onSubmit={submit}>
+      <h2 className={ui.title}>1. Registrar evento</h2>
       <div className="mt-2 grid gap-4 sm:grid-cols-3">
         <label className={ui.field}>
           Nombre del evento
-          <input className={ui.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={150} required autoFocus />
+          <input className={ui.input} value={name} onChange={(e) => setName(e.target.value)} maxLength={150} required />
         </label>
         <label className={ui.field}>
           Fecha del evento
@@ -51,7 +53,6 @@ export default function NewEventForm({ sedes, onCreated, onCancel }) {
       {error && <p className={ui.error}>{error}</p>}
       <div className={ui.toolbar}>
         <button className={ui.btnPrimary} disabled={saving || !idSede}>{saving ? 'Guardando…' : 'Crear evento'}</button>
-        <button type="button" className={ui.btnOutline} onClick={onCancel} disabled={saving}>Cancelar</button>
       </div>
     </form>
   )

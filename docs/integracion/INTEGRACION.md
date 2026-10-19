@@ -22,14 +22,27 @@ red Docker del gateway.
 | Servicio backend | `backend/` completo (con su `Dockerfile`) | Contenedor propio `intranet-events-backend` (puerto 3070) |
 | Gateway | `docs/integracion/events.gateway.routes.js` | `intranet-api-auth/src/routes/` + `app.use(eventsRoutes)` en `src/index.js` |
 | Registro de rutas | `docs/integracion/seed-rutas-eventos.js` | `intranet-api-auth/utils/seed-routes/eventos/` (se ejecuta una vez) |
-| Pantalla | `frontend/src/components/main/content/events/*` | **nueva** carpeta `intranet-frontend/src/components/main/content/events/` |
-| Ruta de pantalla | `frontend/src/routes/_content/events.jsx` | `intranet-frontend/src/routes/_content/events.jsx` |
+| Pantallas | `frontend/src/components/main/content/events/*` | **nueva** carpeta `intranet-frontend/src/components/main/content/events/` |
+| Rutas de pantalla | `frontend/src/routes/_content/{eventsreg,eventsassist}.jsx` | `intranet-frontend/src/routes/_content/` (mismos nombres) |
 
 **No copiar** `frontend/src/routes/__root.jsx`, `_content.jsx` ni `index.jsx`: son un layout de desarrollo; la intranet usa los suyos.
 
-**Pendiente de acordar con los administradores:** hoy la intranet **no tiene** entrada de menú para eventos. Quien administra la
-intranet debe crear la entrada de menú (y el permiso de la pantalla) que apunte al path `/events`. Si prefieren otro path o
-nombre de componente, se cambia en `routes/_content/events.jsx` (un solo archivo) y en la entrada de menú.
+**Pendiente de acordar con los administradores:** a diferencia de sorteos (cuyas tres pantallas ya existían como `<iframe>`),
+la intranet **no tiene** entradas de menú para eventos, así que no hay pantallas que reemplazar. Quien administra la intranet debe
+crear **dos** entradas de menú (con su permiso de pantalla) que apunten a:
+
+| Módulo | Path | Componente | Quién lo usa |
+|---|---|---|---|
+| Registrar evento | `/eventsreg` | `EventsReg` | Quien crea el evento, carga la lista y lo finaliza |
+| Asistencia | `/eventsassist` | `EventsAssist` | Quien atiende las puertas |
+
+Si prefieren otros paths o nombres, se cambian en `routes/_content/eventsreg.jsx` y `eventsassist.jsx` y en el menú.
+
+**Separar quién hace qué (opcional, sin tocar código):** el gateway autoriza por ruta exacta. Para que el personal de puertas solo
+pueda marcar, basta con asignar a *su* grupo de permisos la ruta padre `/events-service` y solo estas hijas:
+`/api/events/me`, `/list`, `/detail`, `/attendees/list`, `/attendees/mark`, `/attendees/add` y `/attendees/mark-all`
+(todas bajo `/api/events`), sin `/create`, `/finalize` ni `/attendees/upload`. El grupo de administración recibe todas.
+Aunque el personal de puertas no tenga acceso al módulo «Registrar evento», el permiso por sede se sigue exigiendo igual.
 
 Dependencia nueva en el frontend de la intranet: ninguna que no tenga ya (`@tanstack/react-router`, `js-cookie`, Tailwind).
 
@@ -38,7 +51,7 @@ Dependencia nueva en el frontend de la intranet: ninguna que no tenga ya (`@tans
 1. **Base de datos.** Misma base `intranet`, esquema propio `eventos`. Crear un rol con permisos solo sobre ese esquema (y
    `SELECT` sobre `intranet_api_auth_manager."Locations"` si se usa el `sync`). Ver `ENTREGA.md`.
    `DATABASE_URL="postgresql://usuario:clave@host:5432/intranet?schema=eventos"` → `npm run migrate:deploy` (el `Dockerfile` ya lo hace al arrancar).
-2. **Datos iniciales.** `npm run sync:sedes` (copia `Locations`). Después, desactivar a mano las sedes que no harán eventos
+2. **Datos iniciales.** `npm run sync:sedes` (copia `Locations`; **no ocurre solo al migrar**, hay que ejecutarlo). Después, desactivar a mano las sedes que no harán eventos
    (`UPDATE "Sede" SET active = false WHERE id_sede IN (...)`); el `sync` no las reactiva. Los permisos por sede
    (`User_branch_permission`) se cargan aparte, por SQL.
 3. **Variables del servicio:** `DATABASE_URL`, `PORT=3000`, `SERVICES_SECRET_KEY` (el MISMO valor que el gateway; no se sube al repo).
@@ -59,8 +72,8 @@ Dependencia nueva en el frontend de la intranet: ninguna que no tenga ya (`@tans
    Cómo se comprueba: con un usuario de ese grupo, abrir `/apiv1/events-service/api/events/me` debe devolver un JSON con su correo y
    sus sedes. 403 = falta asignar alguna ruta al grupo; una respuesta que no es JSON o un 404 = el archivo del gateway no está montado
    o la ruta no se registró; «ECONNREFUSED» en los logs del gateway = el contenedor no está activo o el puerto no coincide.
-6. **Frontend** (`intranet-frontend`): copiar la carpeta `events/` y la ruta `events.jsx` según la tabla, crear la entrada de menú
-   hacia `/events` y compilar con el comando habitual. La pantalla llama a `/apiv1/events-service/api/events/...` (mismo origen y
+6. **Frontend** (`intranet-frontend`): copiar la carpeta `events/` y las dos rutas según la tabla, crear las dos entradas de menú
+   (`/eventsreg` y `/eventsassist`) y compilar con el comando habitual. La pantalla llama a `/apiv1/events-service/api/events/...` (mismo origen y
    cookie). Si el gateway cambiara de ruta, se ajusta con `VITE_EVENTS_API_BASE` al compilar.
 
 ## Reglas para no romper la integración

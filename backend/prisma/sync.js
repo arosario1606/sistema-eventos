@@ -1,28 +1,17 @@
 // Sincroniza datos de la intranet hacia las tablas de este módulo (misma base de datos, otro esquema).
 // Uso: npm run sync:sedes
 import 'dotenv/config';
-import { readFile } from 'node:fs/promises';
 import prisma from '../src/config/prisma.js';
-
-const JOBS = { sedes: 'sedes.sql' };
-
-// Los nombres de esquema no se pueden parametrizar: se validan antes de interpolarlos.
-function schemaName(envVar, fallback) {
-  const value = process.env[envVar] || fallback;
-  if (!/^[a-z_][a-z0-9_]*$/.test(value)) throw new Error(`${envVar} inválido: "${value}"`);
-  return value;
-}
+import { jobNames, runSync } from './sync-lib.js';
 
 const job = process.argv[2];
-if (!JOBS[job]) {
-  console.error(`Uso: node prisma/sync.js <${Object.keys(JOBS).join('|')}>`);
+if (!jobNames().includes(job)) {
+  console.error(`Uso: node prisma/sync.js <${jobNames().join('|')}>`);
   process.exit(1);
 }
 
 try {
-  const sql = (await readFile(new URL(`./sync/${JOBS[job]}`, import.meta.url), 'utf8'))
-    .replaceAll('{{AUTH_SCHEMA}}', schemaName('INTRANET_AUTH_SCHEMA', 'intranet_api_auth_manager'));
-  const affected = await prisma.$executeRawUnsafe(sql);
+  const affected = await runSync(prisma, job);
   console.log(`sync:${job} listo (${affected} filas insertadas o actualizadas)`);
 } finally {
   await prisma.$disconnect();
