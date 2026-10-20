@@ -4,7 +4,6 @@ import { attendeesFileName, buildAttendeesCsv, downloadCsv } from './attendees-c
 import EventSelect from './event-select'
 import { api, formatDate } from './events-api'
 import { readLastEvent, saveLastEvent } from './last-event'
-import MarkAllModal from './mark-all-modal'
 import { ui } from './ui'
 
 // Cada cuántos milisegundos se vuelve a pedir la lista para ver las marcas hechas desde otras puertas o equipos.
@@ -32,7 +31,6 @@ const EventsAssist = () => {
   const [notice, setNotice] = useState('')
   const [offline, setOffline] = useState(false)
   const [adding, setAdding] = useState(false)
-  const [confirmingAll, setConfirmingAll] = useState(false)
   const searchRef = useRef(null)
 
   // Marcas en vuelo y cambios locales: evitan que un refresco lento pise un check recién hecho.
@@ -183,14 +181,35 @@ const EventsAssist = () => {
           </div>
 
           <div className="sticky top-0 z-10 -mx-5 mt-4 border-y border-gray-200 bg-white px-5 py-3">
-            <input
-              ref={searchRef}
-              type="search"
-              className={`${ui.input} w-full py-3 text-base`}
-              placeholder="Buscar por nombre, cédula, empresa, cargo o asiento"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={searchRef}
+                type="search"
+                className={`${ui.input} min-w-0 flex-1 basis-full py-3 text-base sm:basis-64`}
+                placeholder="Buscar por nombre, cédula, empresa, cargo o asiento"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {/* En teléfono los textos se acortan para que ambos botones quepan en una sola fila. */}
+              <button
+                className={`${ui.btnOutline} flex-1 py-3 sm:flex-none`}
+                onClick={() => setAdding(!adding)}
+                aria-expanded={adding}
+                aria-label="Agregar asistente"
+              >
+                <span className="sm:hidden">Agregar</span>
+                <span className="hidden sm:inline">Agregar asistente</span>
+              </button>
+              <button
+                className={`${ui.btnOutline} flex-1 py-3 sm:flex-none`}
+                onClick={() => downloadCsv(attendeesFileName(event.name), buildAttendeesCsv(rows))}
+                disabled={attendedCount === 0}
+                aria-label="Exportar asistentes (CSV)"
+              >
+                <span className="sm:hidden">Exportar</span>
+                <span className="hidden sm:inline">Exportar asistentes (CSV)</span>
+              </button>
+            </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {FILTERS.map((f) => (
                 <button
@@ -210,6 +229,18 @@ const EventsAssist = () => {
               </span>
             </div>
           </div>
+
+          {adding && (
+            <AddAttendeeForm
+              idEvent={idEvent}
+              onCancel={() => setAdding(false)}
+              onAdded={(a) => {
+                setAdding(false)
+                setNotice(`Se agregó a ${a.fullName}.`)
+                refreshAll()
+              }}
+            />
+          )}
 
           {/* Teléfono y tablet vertical: tarjetas con el check grande. Pantallas anchas: tabla completa. */}
           <ul className="mt-3 divide-y divide-gray-100 rounded-md border border-gray-200 md:hidden">
@@ -285,45 +316,7 @@ const EventsAssist = () => {
             </table>
           </div>
 
-          <div className={ui.toolbar}>
-            <button className={ui.btnOutline} onClick={() => setAdding(!adding)}>Agregar asistente</button>
-            <button className={ui.btnOutline} onClick={() => setConfirmingAll(true)} disabled={pendingCount === 0}>
-              Marcar a todos como asistentes
-            </button>
-            <button
-              className={ui.btnOutline}
-              onClick={() => downloadCsv(attendeesFileName(event.name), buildAttendeesCsv(rows))}
-              disabled={attendedCount === 0}
-            >
-              Exportar asistentes (CSV)
-            </button>
-          </div>
-          {adding && (
-            <AddAttendeeForm
-              idEvent={idEvent}
-              onCancel={() => setAdding(false)}
-              onAdded={(a) => {
-                setAdding(false)
-                setNotice(`Se agregó a ${a.fullName}.`)
-                refreshAll()
-              }}
-            />
-          )}
         </div>
-      )}
-
-      {confirmingAll && (
-        <MarkAllModal
-          idEvent={idEvent}
-          total={rows.length}
-          pending={pendingCount}
-          onClose={() => setConfirmingAll(false)}
-          onDone={(marked) => {
-            setConfirmingAll(false)
-            setNotice(marked === 1 ? 'Se marcó 1 persona como asistente.' : `Se marcaron ${marked} personas como asistentes.`)
-            refreshAll()
-          }}
-        />
       )}
     </>
   )

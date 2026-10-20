@@ -20,8 +20,8 @@ gateway de la intranet: ver [`docs/integracion/INTEGRACION.md`](docs/integracion
 - Contador grande «presentes / invitados», buscador (nombre, cédula, empresa, cargo o asiento) y filtros Todos / Pendientes / Presentes.
 - Cada check se guarda **al instante** en la base (`Attendee.attended`, con quién y cuándo). Se toca la celda completa (en pantallas
   anchas) o la tarjeta (en teléfono). La lista se actualiza sola cada 10 s para ver lo que marcan las otras puertas.
-- Además: «Agregar asistente» (para quien no venía en el archivo o se rechazó), «Marcar a todos como asistentes» (con confirmación)
-  y «Exportar asistentes (CSV)».
+- Junto al buscador, siempre a la vista: «Agregar asistente» (para quien no venía en el archivo o se rechazó) y «Exportar asistentes (CSV)».
+- **No existe «marcar a todos»**: la asistencia se marca persona por persona.
 
 Volver a subir el archivo **actualiza** nombre, empresa, cargo, asiento y grupo por cédula, agrega a los nuevos y **nunca toca
 las asistencias ya marcadas ni borra a quien falte** en el archivo.
@@ -116,7 +116,7 @@ DATABASE_URL="postgresql://usuario:clave@localhost:5432/intranet?schema=eventos_
 
 Cubren: autenticación (token ausente/falso/vencido/`alg:none`, usuario inactivo), permisos por sede, sedes inactivas, creación y
 validación de eventos (incluida la fecha imposible `2026-02-31`), carga del CSV (encabezado en cualquier orden, filas con error,
-recarga sin perder asistencias, **cargas simultáneas**), marcar/desmarcar y **marcas simultáneas**, alta manual, marcar a todos,
+recarga sin perder asistencias, **cargas simultáneas**), marcar/desmarcar y **marcas simultáneas**, alta manual,
 **finalizar** (borra todo lo del evento, conserva otros eventos y la sede, y convive con cargas y marcas en curso) y la
 sincronización de sedes.
 
@@ -127,7 +127,7 @@ sincronización de sedes.
    e «Invitados cargados: 40».
 3. Ir a **Asistencia**: el evento se abre solo y el cursor está en el buscador. Marcar varios; recargar la página: las marcas siguen ahí.
    En otra pestaña (o con otro usuario) marcar a alguien: en menos de 10 s aparece en la primera sin recargar.
-4. Probar los filtros, «Agregar asistente» (una cédula repetida da aviso), «Marcar a todos» (Cancelar no cambia nada) y
-   «Exportar asistentes (CSV)». Probar también con una ventana angosta (teléfono): la lista pasa a tarjetas.
+4. Probar los filtros, «Agregar asistente» (una cédula repetida da aviso) y
+   «Exportar asistentes (CSV)»; ambos botones están junto al buscador. Probar también con una ventana angosta (teléfono): la lista pasa a tarjetas.
 5. Volver a **Registrar evento** → «Finalizar evento»: descargar el CSV y confirmar. El evento desaparece de ambos módulos y en la
    base no queda ninguna fila suya.

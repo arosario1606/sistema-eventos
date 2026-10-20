@@ -20,7 +20,6 @@ const children = [
   { name: 'Eventos - Agregar asistente', path: '/api/events/attendees/add' },
   { name: 'Eventos - Listar asistentes', path: '/api/events/attendees/list' },
   { name: 'Eventos - Marcar asistencia', path: '/api/events/attendees/mark' },
-  { name: 'Eventos - Marcar asistencia de todos', path: '/api/events/attendees/mark-all' },
 ];
 
 async function main() {

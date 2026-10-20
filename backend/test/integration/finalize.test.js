@@ -58,7 +58,6 @@ test('finalizar mientras se cargan y marcan asistentes no deja errores 500 ni fi
   const results = await Promise.all([
     api.upload(`/attendees/upload?id=${id}`, tk(), csv),
     api.post('/attendees/mark', tk(), { idEvent: id, idAttendee: first.idAttendee, attended: true }),
-    api.post('/attendees/mark-all', tk(), { idEvent: id }),
     api.post('/finalize', tk(), { idEvent: id }),
     api.post('/attendees/add', tk(), { idEvent: id, cedula: '77777', fullName: 'ALTA' }),
   ]);

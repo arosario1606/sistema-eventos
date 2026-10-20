@@ -40,7 +40,7 @@ Si prefieren otros paths o nombres, se cambian en `routes/_content/eventsreg.jsx
 
 **Separar quién hace qué (opcional, sin tocar código):** el gateway autoriza por ruta exacta. Para que el personal de puertas solo
 pueda marcar, basta con asignar a *su* grupo de permisos la ruta padre `/events-service` y solo estas hijas:
-`/api/events/me`, `/list`, `/detail`, `/attendees/list`, `/attendees/mark`, `/attendees/add` y `/attendees/mark-all`
+`/api/events/me`, `/list`, `/detail`, `/attendees/list`, `/attendees/mark` y `/attendees/add`
 (todas bajo `/api/events`), sin `/create`, `/finalize` ni `/attendees/upload`. El grupo de administración recibe todas.
 Aunque el personal de puertas no tenga acceso al módulo «Registrar evento», el permiso por sede se sigue exigiendo igual.
 

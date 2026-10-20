@@ -54,7 +54,6 @@ export const api = {
   asistentes: (id) => request(`/attendees/list?id=${id}`),
   marcar: (idEvent, idAttendee, attended) =>
     request('/attendees/mark', json('POST', { idEvent, idAttendee, attended })),
-  marcarTodos: (idEvent) => request('/attendees/mark-all', json('POST', { idEvent })),
 }
 
 // Las fechas llegan como medianoche UTC: se muestran en UTC para no retroceder un día en Venezuela.

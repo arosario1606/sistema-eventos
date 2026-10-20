@@ -172,14 +172,4 @@ router.post('/attendees/mark', asyncHandler(async (req, res) => {
   res.json({ idAttendee: attendeeId, attended });
 }));
 
-// Marca como presentes a todos los que faltan (los que ya lo estaban no cambian).
-router.post('/attendees/mark-all', asyncHandler(async (req, res) => {
-  const event = await getAccessibleEvent(parseId(req.body?.idEvent, 'idEvent'), req.user);
-  const { count } = await prisma.attendee.updateMany({
-    where: { idEvent: event.idEvent, attended: false },
-    data: { attended: true, attendedAt: new Date(), attendedBy: req.user.email, updatedBy: req.user.email },
-  });
-  res.json({ marked: count });
-}));
-
 export default router;

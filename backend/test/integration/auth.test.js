@@ -41,7 +41,7 @@ test('/me devuelve solo las sedes activas con permiso', async () => {
 
 test('todas las rutas exigen autenticación', async () => {
   for (const path of ['/list', '/detail?id=1', '/attendees/list?id=1']) assert.equal((await api.get(path)).status, 401, path);
-  for (const path of ['/create', '/finalize', '/attendees/upload?id=1', '/attendees/add', '/attendees/mark', '/attendees/mark-all']) {
+  for (const path of ['/create', '/finalize', '/attendees/upload?id=1', '/attendees/add', '/attendees/mark']) {
     assert.equal((await api.post(path, undefined, {})).status, 401, path);
   }
 });

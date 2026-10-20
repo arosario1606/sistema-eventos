@@ -69,27 +69,10 @@ test('marcas simultáneas sobre distintas personas se guardan todas', async () =
   assert.equal((await rowsOf(id)).attendedCount, 60);
 });
 
-test('marcar a todos: solo a los pendientes, conserva quién marcó a los demás y se puede repetir', async () => {
+test('ya no existe la opción de marcar a todos: la ruta no está expuesta y nada cambia', async () => {
   const id = await newEvent();
-  const [ana] = (await rowsOf(id)).rows;
-  await mark(id, ana.idAttendee, true);
-
-  const res = await api.post('/attendees/mark-all', tk(), { idEvent: id });
-  assert.deepEqual(res.body, { marked: 3 });
-  const after = await rowsOf(id);
-  assert.ok(after.rows.every((r) => r.attended));
-  assert.equal(await prisma.attendee.count({ where: { idEvent: id, attendedBy: ADMIN.email } }), 4);
-  assert.deepEqual((await api.post('/attendees/mark-all', tk(), { idEvent: id })).body, { marked: 0 });
-});
-
-test('marcar a todos valida acceso y solo afecta al evento indicado', async () => {
-  const a = await newEvent('A');
-  const b = await newEvent('B');
-  assert.equal((await api.post('/attendees/mark-all', token(OTHER), { idEvent: a })).status, 403);
-  assert.equal((await api.post('/attendees/mark-all', tk(), {})).status, 400);
-  assert.equal((await api.post('/attendees/mark-all', tk(), { idEvent: 999999 })).status, 404);
-  await api.post('/attendees/mark-all', tk(), { idEvent: a });
-  assert.equal(await prisma.attendee.count({ where: { idEvent: b, attended: true } }), 0);
+  assert.equal((await api.post('/attendees/mark-all', tk(), { idEvent: id })).status, 404);
+  assert.equal(await prisma.attendee.count({ where: { idEvent: id, attended: true } }), 0);
 });
 
 test('alta manual: guarda todos los campos, valida y rechaza cédulas repetidas', async () => {
