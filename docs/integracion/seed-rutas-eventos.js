@@ -1,5 +1,6 @@
 // COPIAR A: intranet-api-auth/utils/seed-routes/eventos/seed-rutas-eventos.js
-// Registra en la BD de la intranet las rutas de backend del servicio de eventos (mismo estilo que los seeds de sorteos y créditos).
+// ALTERNATIVA al SQL: registra SOLO las rutas de backend del servicio de eventos (no crea el menú ni los permisos).
+// Lo normal es ejecutar docs/integracion/registro-rutas-eventos.sql, que hace todo (rutas, menú, icono y permisos).
 // Ejecutar con la BD de la intranet configurada (SCHEMA_API_AUTH):  node utils/seed-routes/eventos/seed-rutas-eventos.js
 //
 // El gateway autoriza por ruta EXACTA y route_path / route_name son únicos en toda la intranet.

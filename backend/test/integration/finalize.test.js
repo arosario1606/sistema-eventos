@@ -1,6 +1,6 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { ADMIN, OTHER, client, prisma, seedScenario, startServer, token } from './helpers.js';
+import { ADMIN, OTHER, client, prisma, seedScenario, startServer, token, dropIntranet } from './helpers.js';
 
 let server;
 let api;
@@ -15,6 +15,7 @@ before(async () => {
 
 after(async () => {
   server.close();
+  await dropIntranet();
   await prisma.$disconnect();
 });
 
@@ -37,7 +38,7 @@ test('finalizar borra el evento y sus asistentes, informa los conteos y no toca 
   assert.equal(await prisma.event.count({ where: { idEvent: id } }), 0);
   assert.equal(await prisma.attendee.count({ where: { idEvent: id } }), 0, 'no queda ninguna fila del evento');
   assert.equal(await prisma.attendee.count({ where: { idEvent: keep } }), 3, 'el otro evento intacto');
-  assert.equal(await prisma.sede.count({ where: { idSede: 1 } }), 1, 'la sede se conserva');
+  assert.equal((await api.get('/me', tk())).body.sedes.length, 1, 'la sede se conserva (está en la intranet)');
   assert.equal((await api.get(`/detail?id=${id}`, tk())).status, 404);
   assert.equal((await api.post('/finalize', tk(), { idEvent: id })).status, 404, 'no se puede finalizar dos veces');
 });

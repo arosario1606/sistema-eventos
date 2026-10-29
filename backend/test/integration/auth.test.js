@@ -1,7 +1,7 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import jwt from 'jsonwebtoken';
-import { ADMIN, client, prisma, seedScenario, SECRET, startServer, token } from './helpers.js';
+import { ADMIN, client, prisma, seedScenario, SECRET, startServer, token, dropIntranet } from './helpers.js';
 
 let server;
 let api;
@@ -15,6 +15,7 @@ before(async () => {
 
 after(async () => {
   server.close();
+  await dropIntranet();
   await prisma.$disconnect();
 });
 
@@ -35,7 +36,7 @@ test('token sin identidad responde 401 y usuario inactivo responde 403', async (
 test('/me devuelve solo las sedes activas con permiso', async () => {
   const res = await api.get('/me', token(ADMIN));
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body.sedes, [{ idSede: 1, name: 'Sede 1' }], 'la sede 4 está inactiva y no se ofrece');
+  assert.deepEqual(res.body.sedes, [{ idSede: 1, name: 'Planta Maracaibo Empresa A' }], 'la 3 está inactiva en la intranet y la 4 está desactivada en el módulo');
   assert.equal(res.body.email, ADMIN.email);
 });
 

@@ -12,8 +12,8 @@ import { checkAuth } from "../middlewares/checkAuth.js";
 
 const router = Router();
 
-// Puerto del servicio de eventos en la red Docker (3060 es el de sorteos). CONFIRMAR con el equipo de la intranet que esté libre.
-const EVENTS_SERVICE_PORT = 3070;
+// Puerto del servicio de eventos en la red Docker (3008 es el de sorteos). Acordado: 3009. Confirmar con el administrador que siga libre.
+const EVENTS_SERVICE_PORT = 3009;
 
 router.use("/apiv1/events-service", checkAuth, async (req, res, next) => {
   // Ruta padre registrada en Routes_backend (ver seed-rutas-eventos.js)

@@ -53,13 +53,18 @@ Ejemplo con datos ficticios en `docs/ejemplos/asistentes_ejemplo.csv` (40 válid
 
 ## Datos propios y datos de la intranet
 
-| Tabla del módulo | Origen |
+Las **sedes y los permisos por sede no se copian**: se leen en vivo de la intranet a través de dos vistas de solo lectura que crea el administrador
+(`docs/integracion/vistas-eventos.sql`).
+
+| Dato | Origen |
 |---|---|
-| `Sede` | Copia de `intranet_api_auth_manager."Locations"` con `npm run sync:sedes` (**no es automático**: las migraciones solo crean las tablas). `seed:dev` también la ejecuta. `active = false` oculta una sede al crear eventos nuevos sin perder el historial. |
-| `User_branch_permission` | Propia, **se carga a mano por SQL**: `user_id` (= `Users.id` de la intranet), `user_email` (informativo) e `id_sede`. Quien no tenga filas aquí no ve ni puede marcar ningún evento. |
+| Sedes (nombre y si están activas) | Vista `v_sede` ← `intranet_api_auth_manager."Locations"`. Un cambio de nombre se refleja al instante. |
+| Quién puede ver cada sede | Vista `v_permiso_sede` ← `intranet_api_auth_manager."User_organization_accesses"` (los permisos que ya existen en la intranet; Eventos solo los **lee**). |
+| `Sede` (propia) | Solo `id_sede` + `active`: `active = false` oculta una sede al crear eventos nuevos sin perder el historial. Una sede sin fila cuenta como activa. |
 | `Event`, `Attendee` | Propias. No hay copia de empleados: nombre y cargo se guardan en la fila del asistente tal como vienen del archivo. |
 
-Un usuario ve y gestiona **los eventos de las sedes sobre las que tiene permiso**.
+Un usuario ve y gestiona **los eventos de las sedes sobre las que tiene permiso**. Qué pantallas ve depende de su **grupo**: `EVENTOS` (puertas,
+solo «Asistencia de Eventos»), `EVENTOS_ADMIN` (también «Registrar Evento») o `ADMINISTRADOR`; ver `docs/integracion/INTEGRACION.md`.
 
 ## Documentación y despliegue
 
@@ -71,13 +76,13 @@ Un usuario ve y gestiona **los eventos de las sedes sobre las que tiene permiso*
 Contenedor del backend (desde `backend/`, con `.env.docker` creado a partir de `.env.docker.example`):
 
 ```bash
-docker compose --env-file .env.docker up --build -d    # puerto 3070; las migraciones se aplican al arrancar
-curl http://localhost:3070/health                       # {"status":"ok"}
+docker compose --env-file .env.docker up --build -d    # puerto 3009; las migraciones se aplican al arrancar
+curl http://localhost:3009/health                       # {"status":"ok"}
 ```
 
 ## Puesta en marcha local
 
-Requisitos: Node 22 y un PostgreSQL con la base `intranet` (con el esquema `intranet_api_auth_manager` para copiar las sedes reales).
+Requisitos: Node 22 y un PostgreSQL con la base `intranet` **que tenga el esquema `intranet_api_auth_manager`** (las vistas leen de él).
 
 ```bash
 # Backend
@@ -85,9 +90,7 @@ cd backend
 cp .env.example .env          # ajustar DATABASE_URL, SERVICES_SECRET_KEY (de PRUEBA), DEV_USER_ID y DEV_USER_EMAIL
 npm install
 npm run migrate:deploy        # crea el esquema "eventos" y sus tablas (versionadas en prisma/migrations)
-npm run sync:sedes            # copia las sedes REALES desde intranet_api_auth_manager."Locations"
-npm run seed:dev              # SOLO pruebas: repite esa copia y da permisos al usuario de desarrollo en las sedes activas
-                              # (solo si la base NO tiene la tabla Locations crea 2 sedes de prueba: ids 9001 y 9002)
+# Ejecutar UNA vez docs/integracion/vistas-eventos.sql completo en tu base (DBeaver: Alt+X): crea v_sede y v_permiso_sede
 npm run dev                   # http://localhost:3000
 
 # Frontend (otra terminal)
@@ -97,8 +100,12 @@ npm install
 npm run dev                   # http://localhost:5173
 ```
 
-> El backend **siempre** exige `x-auth-token`. En local, Vite lo agrega al reenviar `/apiv1/events-service` (imita al gateway
-> de la intranet). El token de prueba dura 8 h; si vence aparece «Sin sesión»: genere otro con `npm run dev:token`.
+> `DEV_USER_ID` debe ser un `Users.id` **real** de la intranet que tenga sedes en `User_organization_accesses`: los permisos ya no se crean desde aquí.
+> Quien administra los permisos por sede en la intranet puede darte las sedes que necesites para probar.
+>
+> El backend **siempre** exige `x-auth-token`. En local, Vite lo agrega al reenviar `/apiv1/events-service` (imita al gateway de la intranet).
+> El token de prueba dura 8 h; si vence aparece «Sin sesión»: genere otro con `npm run dev:token`.
+> Si faltan las vistas, la API responde **503** con el nombre del script que hay que ejecutar.
 
 Para cambios de esquema: editar `prisma/schema.prisma` y `npm run migrate:dev` (genera la migración). En producción solo `migrate:deploy`.
 No se usa `db push`.
@@ -109,7 +116,7 @@ No se usa `db push`.
 cd backend
 npm test                      # unitarias (sin base de datos); en frontend/ también hay `npm test` (exportación del CSV)
 
-# Integración: usan esquemas DESCARTABLES (eventos_test, eventos_test_auth) y los limpian solos.
+# Integración: usan esquemas DESCARTABLES (eventos_test, eventos_test_auth, eventos_test_menu) y los limpian solos.
 # Nunca tocan eventos ni los esquemas reales de la intranet; por eso exigen ?schema=eventos_test
 DATABASE_URL="postgresql://usuario:clave@localhost:5432/intranet?schema=eventos_test" npm run test:integration
 ```
@@ -117,8 +124,9 @@ DATABASE_URL="postgresql://usuario:clave@localhost:5432/intranet?schema=eventos_
 Cubren: autenticación (token ausente/falso/vencido/`alg:none`, usuario inactivo), permisos por sede, sedes inactivas, creación y
 validación de eventos (incluida la fecha imposible `2026-02-31`), carga del CSV (encabezado en cualquier orden, filas con error,
 recarga sin perder asistencias, **cargas simultáneas**), marcar/desmarcar y **marcas simultáneas**, alta manual,
-**finalizar** (borra todo lo del evento, conserva otros eventos y la sede, y convive con cargas y marcas en curso) y la
-sincronización de sedes.
+**finalizar** (borra todo lo del evento, conserva otros eventos y la sede, y convive con cargas y marcas en curso), las
+**sedes y permisos leídos en vivo** (con una intranet simulada que ejecuta el mismo `vistas-eventos.sql`: renombrar, sede inactiva, duplicados, filas sin
+sede, vistas ausentes → 503) y el script `registro-rutas-eventos.sql` (menú, icono, grupos y permisos; repetible, y se detiene sin cambiar nada si falta algo).
 
 ## Guía de prueba manual
 

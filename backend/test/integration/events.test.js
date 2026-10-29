@@ -1,6 +1,6 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { ADMIN, OTHER, client, prisma, seedScenario, startServer, token } from './helpers.js';
+import { ADMIN, OTHER, client, prisma, seedScenario, startServer, token, dropIntranet } from './helpers.js';
 
 let server;
 let api;
@@ -16,6 +16,7 @@ before(async () => {
 
 after(async () => {
   server.close();
+  await dropIntranet();
   await prisma.$disconnect();
 });
 
@@ -31,7 +32,8 @@ test('crear evento valida nombre, fecha y sede', async () => {
 
 test('crear evento exige permiso sobre una sede ACTIVA', async () => {
   assert.equal((await create({ idSede: 2 })).status, 403, 'sede sin permiso');
-  assert.equal((await create({ idSede: 4 })).status, 403, 'sede inactiva no se ofrece para eventos nuevos');
+  assert.equal((await create({ idSede: 3 })).status, 403, 'sede inactiva en la intranet no se ofrece para eventos nuevos');
+  assert.equal((await create({ idSede: 4 })).status, 403, 'sede desactivada en el módulo no se ofrece para eventos nuevos');
   assert.equal((await create({ idSede: 999 })).status, 403, 'sede inexistente');
 });
 
@@ -39,7 +41,7 @@ test('crea el evento y lo lista con sus conteos; otro usuario no lo ve ni lo toc
   const res = await create({ name: '  Fiesta   de Navidad ' });
   assert.equal(res.status, 201);
   assert.equal(res.body.name, 'Fiesta de Navidad');
-  assert.equal(res.body.sede, 'Sede 1');
+  assert.equal(res.body.sede, 'Planta Maracaibo Empresa A');
   const id = res.body.idEvent;
   assert.equal((await prisma.event.findUnique({ where: { idEvent: id } })).createdBy, ADMIN.email, 'auditado con el correo');
 

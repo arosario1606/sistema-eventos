@@ -10,8 +10,6 @@
     "test:integration": "prisma migrate deploy && node --test --test-concurrency=1 \"test/integration/*.test.js\"",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
-    "seed:dev": "node prisma/seed.dev.js",
-    "sync:sedes": "node prisma/sync.js sedes",
     "dev:token": "node scripts/dev-token.js",
     "postinstall": "prisma generate"
   },

@@ -1,6 +1,6 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { ADMIN, OTHER, client, prisma, seedScenario, startServer, token } from './helpers.js';
+import { ADMIN, OTHER, client, prisma, seedScenario, startServer, token, dropIntranet } from './helpers.js';
 
 let server;
 let api;
@@ -15,6 +15,7 @@ before(async () => {
 
 after(async () => {
   server.close();
+  await dropIntranet();
   await prisma.$disconnect();
 });
 

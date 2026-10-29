@@ -9,37 +9,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 1. Sede: sedes elegibles para eventos. idSede = id de Locations en la intranet.
-//    `active = false` las oculta al crear eventos nuevos sin perder el historial.
+// 1. Sede: configuración propia de las sedes. Ya NO es una copia de Locations: el nombre de la sede, si está activa en la
+//    intranet y quién tiene permiso sobre ella se leen EN VIVO de las vistas v_sede y v_permiso_sede
+//    (ver docs/integracion/vistas-eventos.sql). Aquí solo queda la decisión de este módulo: `active = false` oculta una
+//    sede al crear eventos nuevos sin perder el historial. Una sede sin fila cuenta como activa.
+//    Sin claves foráneas: la fila puede no existir y la sede puede desaparecer de Locations.
 model Sede {
   idSede    Int      @id @map("id_sede")
-  name      String   @db.VarChar(150)
   active    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  userPermissions UserBranchPermission[]
-  events          Event[]
-
   @@map("Sede")
 }
 
-// 2. User_branch_permission: sedes sobre las que un usuario puede crear y gestionar eventos.
-//    userId = Users.id de la intranet (viene en el token); userEmail es solo informativo.
-model UserBranchPermission {
-  userId    Int      @map("user_id")
-  userEmail String   @map("user_email") @db.VarChar(150)
-  idSede    Int      @map("id_sede")
-  createdBy String   @map("created_by") @db.VarChar(100)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  sede Sede @relation(fields: [idSede], references: [idSede], onDelete: Cascade)
-
-  @@id([userId, idSede])
-  @@map("User_branch_permission")
-}
-
-// 3. Event: un evento de una sede (antes: columnas evento, fecha, sede y numero_evento de ta_asistencia).
+// 2. Event: un evento de una sede (antes: columnas evento, fecha, sede y numero_evento de ta_asistencia).
 model Event {
   idEvent   Int      @id @default(autoincrement()) @map("id_event")
   name      String   @db.VarChar(150)
@@ -50,14 +34,13 @@ model Event {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  sede      Sede       @relation(fields: [idSede], references: [idSede])
   attendees Attendee[]
 
   @@index([idSede])
   @@map("Event")
 }
 
-// 4. Attendee: una persona invitada a un evento y si asistió.
+// 3. Attendee: una persona invitada a un evento y si asistió.
 //    Equivalencias con ta_asistencia: nombre -> fullName, empresa -> company, telefono (que en realidad guardaba
 //    el cargo) -> jobTitle, brasalete (que en realidad guardaba la cédula) -> cedula, asiento -> seat,
 //    empresa_grupo -> companyGroup, asistio ('S'/'N'/NULL) -> attended (booleano).

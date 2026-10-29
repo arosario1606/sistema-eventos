@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-import prisma from '../config/prisma.js';
 import { HttpError } from '../utils/http.js';
+import { userSedeIds } from '../services/sedes.js';
 
 // El gateway de la intranet (intranet-api-auth) autentica al usuario, valida el permiso de la ruta
 // y reenvía un JWT de corta duración en `x-auth-token`, firmado con SERVICES_SECRET_KEY.
@@ -35,19 +35,9 @@ export async function authenticate(req, res, next) {
   try {
     const { id, email } = verifyIntranetToken(req);
 
-    const permissions = await prisma.userBranchPermission.findMany({
-      where: { userId: id },
-      select: { idSede: true, sede: { select: { active: true } } },
-    });
-
-    req.user = {
-      id,
-      email,
-      // Todas las sedes con permiso: sirven para consultar eventos ya creados.
-      sedeIds: permissions.map((p) => p.idSede),
-      // Solo las sedes activas se ofrecen al crear eventos nuevos.
-      activeSedeIds: permissions.filter((p) => p.sede.active).map((p) => p.idSede),
-    };
+    // Permisos por sede: los que ya existen en la intranet (vista v_permiso_sede). Todas las sedes con permiso sirven para
+    // consultar eventos ya creados; cuáles se pueden ofrecer hoy para crear eventos nuevos se calcula solo donde hace falta.
+    req.user = { id, email, sedeIds: await userSedeIds(id) };
     next();
   } catch (err) {
     next(err);

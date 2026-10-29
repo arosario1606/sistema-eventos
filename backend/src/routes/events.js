@@ -7,6 +7,7 @@ import { getAccessibleEvent } from '../services/eventAccess.js';
 import { parseAttendee } from '../services/attendeeFields.js';
 import { importAttendees } from '../services/importAttendees.js';
 import { finalizeEvent } from '../services/finalize.js';
+import { offerableSedes, sedeNames } from '../services/sedes.js';
 
 // IMPORTANTE: el gateway de la intranet autoriza por ruta EXACTA (Routes_backend_child.route_path),
 // así que no se usan parámetros en el path: el id del evento viaja en `?id=` o en el body.
@@ -19,24 +20,19 @@ function requireFile(req) {
   return req.file.buffer;
 }
 
-const toEventJson = (e, counts = {}) => ({
+const toEventJson = (e, nameOf, counts = {}) => ({
   idEvent: e.idEvent,
   name: e.name,
   eventDate: e.eventDate,
   idSede: e.idSede,
-  sede: e.sede?.name,
+  sede: nameOf(e.idSede),
   attendees: counts.attendees ?? 0,
   attended: counts.attended ?? 0,
 });
 
-// Usuario autenticado y las sedes sobre las que puede crear eventos
+// Usuario autenticado y las sedes sobre las que puede crear eventos (activas y con permiso)
 router.get('/me', asyncHandler(async (req, res) => {
-  const sedes = await prisma.sede.findMany({
-    where: { idSede: { in: req.user.activeSedeIds }, active: true },
-    select: { idSede: true, name: true },
-    orderBy: { name: 'asc' },
-  });
-  res.json({ userId: req.user.id, email: req.user.email, sedes });
+  res.json({ userId: req.user.id, email: req.user.email, sedes: await offerableSedes(req.user.sedeIds) });
 }));
 
 // Eventos visibles para el usuario (los de sus sedes), con conteo de invitados y presentes
@@ -44,15 +40,16 @@ router.get('/list', asyncHandler(async (req, res) => {
   const events = await prisma.event.findMany({
     where: { idSede: { in: req.user.sedeIds } },
     orderBy: [{ eventDate: 'desc' }, { idEvent: 'desc' }],
-    include: { sede: true },
   });
-  const [total, present] = await Promise.all([
-    prisma.attendee.groupBy({ by: ['idEvent'], where: { idEvent: { in: events.map((e) => e.idEvent) } }, _count: { _all: true } }),
-    prisma.attendee.groupBy({ by: ['idEvent'], where: { idEvent: { in: events.map((e) => e.idEvent) }, attended: true }, _count: { _all: true } }),
+  const ids = events.map((e) => e.idEvent);
+  const [total, present, nameOf] = await Promise.all([
+    prisma.attendee.groupBy({ by: ['idEvent'], where: { idEvent: { in: ids } }, _count: { _all: true } }),
+    prisma.attendee.groupBy({ by: ['idEvent'], where: { idEvent: { in: ids }, attended: true }, _count: { _all: true } }),
+    sedeNames(),
   ]);
   const totals = new Map(total.map((g) => [g.idEvent, g._count._all]));
   const presents = new Map(present.map((g) => [g.idEvent, g._count._all]));
-  res.json(events.map((e) => toEventJson(e, { attendees: totals.get(e.idEvent), attended: presents.get(e.idEvent) })));
+  res.json(events.map((e) => toEventJson(e, nameOf, { attendees: totals.get(e.idEvent), attended: presents.get(e.idEvent) })));
 }));
 
 // Registrar evento (nombre, fecha y sede)
@@ -68,15 +65,15 @@ router.post('/create', asyncHandler(async (req, res) => {
   }
   const sedeId = Number(idSede);
   if (!Number.isInteger(sedeId)) throw new HttpError(400, 'Seleccione la sede del evento');
-  if (!req.user.activeSedeIds.includes(sedeId)) {
+  // Solo sedes con permiso del usuario Y activas hoy (en la intranet y en este módulo).
+  if (!(await offerableSedes(req.user.sedeIds)).some((s) => s.idSede === sedeId)) {
     throw new HttpError(403, 'No tienes permiso sobre la sede seleccionada');
   }
 
   const event = await prisma.event.create({
     data: { name: cleanName, eventDate: date, idSede: sedeId, createdBy: req.user.email },
-    include: { sede: true },
   });
-  res.status(201).json(toEventJson(event));
+  res.status(201).json(toEventJson(event, await sedeNames()));
 }));
 
 router.get('/detail', asyncHandler(async (req, res) => {
@@ -85,7 +82,7 @@ router.get('/detail', asyncHandler(async (req, res) => {
     prisma.attendee.count({ where: { idEvent: event.idEvent } }),
     prisma.attendee.count({ where: { idEvent: event.idEvent, attended: true } }),
   ]);
-  res.json(toEventJson(event, { attendees, attended }));
+  res.json(toEventJson(event, await sedeNames(), { attendees, attended }));
 }));
 
 // Finalizar: borra el evento y todos sus asistentes (irreversible). Lo puede hacer quien tenga acceso a la sede.

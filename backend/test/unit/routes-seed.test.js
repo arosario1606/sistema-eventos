@@ -17,6 +17,15 @@ test('seed-rutas-eventos.js lista las mismas rutas que backend/src/routes/events
   assert.deepEqual(registered, exposed);
 });
 
+test('registro-rutas-eventos.sql registra las mismas rutas de backend que backend/src/routes/events.js', async () => {
+  const code = await read('../../src/routes/events.js');
+  const sql = await read('../../../docs/integracion/registro-rutas-eventos.sql');
+
+  const exposed = [...code.matchAll(/router\.(?:get|post)\('(\/[a-z/-]*)'/g)].map((m) => `/api/events${m[1]}`).sort();
+  const registered = [...sql.matchAll(/'(\/api\/events\/[a-z/-]*)',\s+'(?:puertas|admin)'/g)].map((m) => m[1]).sort();
+  assert.deepEqual(registered, exposed);
+});
+
 test('ninguna ruta del servicio usa parámetros en el path (el gateway autoriza por ruta exacta)', async () => {
   const code = await read('../../src/routes/events.js');
   assert.doesNotMatch(code, /router\.(?:get|post|patch|put|delete)\('[^']*:/);
