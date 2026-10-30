@@ -49,10 +49,10 @@ async function resetMenu(withAdmin = true) {
 
 const q = (sql) => prisma.$queryRawUnsafe(sql);
 const counts = async () => (await q(`SELECT
-  (SELECT count(*) FROM ${S}."Permissions_groups") g, (SELECT count(*) FROM ${S}."Routes_backend") rb,
-  (SELECT count(*) FROM ${S}."Routes_backend_child") rbc, (SELECT count(*) FROM ${S}."Routes_frontend") rf,
-  (SELECT count(*) FROM ${S}."Routes_frontend_child") rfc, (SELECT count(*) FROM ${S}."Permissions_groups_routes_entity") pe,
-  (SELECT count(*) FROM ${S}."Permissions_groups_routes_child_entity") pce`))[0];
+  (SELECT count(*)::int FROM ${S}."Permissions_groups") g, (SELECT count(*)::int FROM ${S}."Routes_backend") rb,
+  (SELECT count(*)::int FROM ${S}."Routes_backend_child") rbc, (SELECT count(*)::int FROM ${S}."Routes_frontend") rf,
+  (SELECT count(*)::int FROM ${S}."Routes_frontend_child") rfc, (SELECT count(*)::int FROM ${S}."Permissions_groups_routes_entity") pe,
+  (SELECT count(*)::int FROM ${S}."Permissions_groups_routes_child_entity") pce`))[0];
 
 // Rutas y pantallas a las que tiene acceso un grupo
 const accessOf = async (group) => (await q(`
@@ -76,7 +76,7 @@ const ADMIN = [...PUERTAS, '/api/events/attendees/upload', '/api/events/create',
 test('crea sección con icono, pantallas, rutas, grupos y permisos; el resumen coincide con lo esperado', async () => {
   const r = await runScript();
   assert.deepEqual(r, {
-    padre_esperado_1: 1, hijas_esperado_9: 9, seccion_esperado_1: 1, pantallas_esperado_2: 2,
+    padre_esperado_1: 1, hijas_esperado_9: 9, seccion_esperado_1: 1, pantallas_esperado_2: 2, permisos_seccion_esperado_3: 3,
     grupos_admin_esperado_2: 2, grupos_puertas_esperado_1: 1, permisos_puertas_esperado_7: 7, permisos_admin_esperado_11: 11,
   });
   const [sec] = await q(`SELECT * FROM ${S}."Routes_frontend" WHERE route_name = 'Eventos'`);
@@ -102,12 +102,32 @@ test('roles: EVENTOS (puertas) solo Asistencia y 6 rutas; EVENTOS_ADMIN y ADMINI
   assert.deepEqual(await accessOf('SORTEOS'), [], 'ningún otro grupo recibe permisos');
 });
 
+test('la SECCIÓN «Eventos» queda asignada a los tres grupos (sin esto el menú no la muestra) y a ningún otro', async () => {
+  await runScript();
+  const groups = (await q(`SELECT g.group_name FROM ${S}."Permissions_groups_routes_entity" e
+    JOIN ${S}."Permissions_groups" g ON g.id = e."permissions_groupsId"
+    JOIN ${S}."Routes_frontend" s ON s.id = e."routes_frontendId" AND s.route_name = 'Eventos' ORDER BY 1`)).map((r) => r.group_name);
+  assert.deepEqual(groups, ['ADMINISTRADOR', 'EVENTOS', 'EVENTOS_ADMIN']);
+  const sorteos = await q(`SELECT count(*)::int AS n FROM ${S}."Permissions_groups_routes_entity" e
+    JOIN ${S}."Routes_frontend" s ON s.id = e."routes_frontendId" AND s.route_name = 'Sorteos'`);
+  assert.equal(sorteos[0].n, 0, 'no toca las secciones de otros módulos');
+});
+
 test('se puede ejecutar dos veces: no duplica nada', async () => {
   await runScript();
   const first = await counts();
   const second = await runScript();
   assert.deepEqual(await counts(), first);
   assert.equal(second.permisos_admin_esperado_11, 11);
+});
+
+test('si ya se había ejecutado la versión anterior (sin permiso de sección), volver a ejecutar solo agrega lo que faltaba', async () => {
+  await runScript();
+  const before = await counts();
+  await prisma.$executeRawUnsafe(`DELETE FROM ${S}."Permissions_groups_routes_entity" WHERE "routes_frontendId" IS NOT NULL`);
+  assert.equal((await counts()).pe, before.pe - 3, 'se simula el estado de la versión anterior');
+  await runScript();
+  assert.deepEqual(await counts(), before, 'solo se repusieron las 3 filas de sección');
 });
 
 test('no pisa un icono ya existente ni quita permisos asignados a mano', async () => {

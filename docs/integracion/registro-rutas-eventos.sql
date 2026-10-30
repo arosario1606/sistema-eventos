@@ -5,7 +5,7 @@
 --   3) Crea la SECCIÓN «Eventos» del menú, con su icono (ticket), y sus dos pantallas:
 --        «Registrar Evento»      (/eventsreg)
 --        «Asistencia de Eventos» (/eventsassist)
---   4) Asigna permisos:
+--   4) Asigna permisos (de la SECCIÓN del menú, de las dos pantallas y de las rutas del backend):
 --        EVENTOS                   -> pantalla «Asistencia de Eventos» y 6 rutas (consultar y marcar asistencia).
 --        EVENTOS_ADMIN, ADMINISTRADOR -> las dos pantallas y las 9 rutas (además crear, subir lista y finalizar).
 --
@@ -95,6 +95,18 @@ WHERE s.route_name = 'Eventos'
   AND NOT EXISTS (
     SELECT 1 FROM intranet_api_auth_manager."Routes_frontend_child" c WHERE c.route_path = v.route_path);
 
+-- ---- 3b) Permisos: la SECCIÓN «Eventos» del menú para TODOS los grupos ------------------------------
+-- Permissions_groups_routes_entity guarda con routes_frontendId el permiso de una SECCIÓN (y con routes_backendId el de una
+-- ruta padre del backend). Sin esta fila el menú no muestra la sección aunque el grupo tenga permiso sobre sus pantallas.
+INSERT INTO intranet_api_auth_manager."Permissions_groups_routes_entity" ("permissions_groupsId", "routes_frontendId")
+SELECT g.id, s.id
+FROM (SELECT id FROM _grupos_admin UNION SELECT id FROM _grupos_puertas) g
+CROSS JOIN intranet_api_auth_manager."Routes_frontend" s
+WHERE s.route_name = 'Eventos'
+  AND NOT EXISTS (
+    SELECT 1 FROM intranet_api_auth_manager."Permissions_groups_routes_entity" e
+    WHERE e."permissions_groupsId" = g.id AND e."routes_frontendId" = s.id);
+
 -- ---- 4) Permisos: ruta padre del backend para TODOS los grupos --------------------------------------
 INSERT INTO intranet_api_auth_manager."Permissions_groups_routes_entity" ("permissions_groupsId", "routes_backendId")
 SELECT g.id, p.id
@@ -139,6 +151,8 @@ SELECT
   (SELECT count(*) FROM intranet_api_auth_manager."Routes_backend_child" WHERE route_path LIKE '/api/events/%')                          AS hijas_esperado_9,
   (SELECT count(*) FROM intranet_api_auth_manager."Routes_frontend" WHERE route_name = 'Eventos')                                        AS seccion_esperado_1,
   (SELECT count(*) FROM intranet_api_auth_manager."Routes_frontend_child" WHERE route_path IN ('/eventsreg', '/eventsassist'))           AS pantallas_esperado_2,
+  (SELECT count(*) FROM intranet_api_auth_manager."Permissions_groups_routes_entity" e
+     JOIN intranet_api_auth_manager."Routes_frontend" s ON s.id = e."routes_frontendId" AND s.route_name = 'Eventos')                      AS permisos_seccion_esperado_3,
   (SELECT count(*) FROM _grupos_admin)                                                                                                    AS grupos_admin_esperado_2,
   (SELECT count(*) FROM _grupos_puertas)                                                                                                  AS grupos_puertas_esperado_1,
   (SELECT count(*) FROM intranet_api_auth_manager."Permissions_groups_routes_child_entity" e

@@ -1,9 +1,11 @@
 -- Réplica de las tablas del menú y los permisos de intranet_api_auth_manager, para probar registro-rutas-eventos.sql.
 -- Solo para pruebas, en un esquema PROPIO ({{S}} lo reemplaza el test por eventos_test_menu): NUNCA toca el esquema real.
--- Permissions_groups, Routes_frontend y Routes_frontend_child: DDL REAL (copiado de la intranet).
--- Routes_backend, Routes_backend_child y las dos tablas Permissions_groups_routes_*: el DDL real NO se ha visto; se
--- infieren solo las columnas que usan los scripts de Sorteos (que ya funcionan en la intranet). Si difieren, el script
--- real fallaría al ejecutarse sobre la copia de la base, sin cambiar nada (va en una transacción).
+-- Permissions_groups, Routes_frontend y Routes_frontend_child: DDL REAL (copiado de la intranet). De las dos tablas
+-- Permissions_groups_routes_* se conocen las COLUMNAS reales (id, permissions_groupsId, routes_frontendId, routes_backendId /
+-- routes_backend_childId, routes_frontend_childId); sus claves foráneas aquí son una suposición razonable.
+-- Routes_backend y Routes_backend_child: el DDL real NO se ha visto; se infieren solo las columnas que usan los scripts de
+-- Sorteos (que ya funcionan en la intranet). Si difieren, el script real fallaría al ejecutarse sobre la copia de la base,
+-- sin cambiar nada (va en una transacción).
 CREATE SCHEMA IF NOT EXISTS {{S}};
 
 CREATE TABLE {{S}}."Permissions_groups" (
@@ -36,7 +38,8 @@ CREATE TABLE {{S}}."Routes_backend_child" (
 
 CREATE TABLE {{S}}."Permissions_groups_routes_entity" (
   id serial4 PRIMARY KEY, "permissions_groupsId" int4 NOT NULL REFERENCES {{S}}."Permissions_groups"(id),
-  "routes_backendId" int4 NOT NULL REFERENCES {{S}}."Routes_backend"(id));
+  "routes_frontendId" int4 NULL REFERENCES {{S}}."Routes_frontend"(id),
+  "routes_backendId" int4 NULL REFERENCES {{S}}."Routes_backend"(id));
 CREATE TABLE {{S}}."Permissions_groups_routes_child_entity" (
   id serial4 PRIMARY KEY, "permissions_groupsId" int4 NOT NULL REFERENCES {{S}}."Permissions_groups"(id),
   "routes_backend_childId" int4 NULL REFERENCES {{S}}."Routes_backend_child"(id),

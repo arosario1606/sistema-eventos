@@ -60,7 +60,8 @@ Para volver a habilitarla: `UPDATE eventos."Sede" SET active = true WHERE id_sed
    Debe conservar `parseReqBody: !req.is("multipart/form-data")`; sin eso la subida de CSV falla.
 2. Confirmar el puerto en `EVENTS_SERVICE_PORT` (3009).
 3. Ejecutar **completo** `docs/integracion/registro-rutas-eventos.sql`, primero sobre la copia de la base. Crea los grupos `EVENTOS` y `EVENTOS_ADMIN`,
-   las rutas del backend, la sección **«Eventos»** del menú con su icono y sus dos pantallas, y asigna los permisos (ver `INTEGRACION.md`). Es repetible
+   las rutas del backend, la sección **«Eventos»** del menú con su icono y sus dos pantallas, y asigna los permisos de la **sección**, de las pantallas
+   y de las rutas (ver `INTEGRACION.md`; la sección necesita su propio permiso o el menú no la muestra). Es repetible
    y su última consulta es un resumen: cada valor debe coincidir con el número que lleva su columna en el nombre.
 4. Desde el panel de administración, asignar los usuarios a `EVENTOS` (puertas: solo «Asistencia de Eventos») o `EVENTOS_ADMIN` (organizadores:
    también «Registrar Evento»). `ADMINISTRADOR` ya recibe todo.
@@ -117,10 +118,8 @@ desde ahora se usan los permisos de la intranet), **3)** ejecutar `registro-ruta
 - La construcción de la imagen Docker y el contenedor `healthy` (en el entorno de desarrollo no había servicio de Docker).
 - **El icono del menú:** se guardó con el mismo formato que el de Sorteos, pero no se pudo ver renderizado dentro de la intranet real. Si no aparece o se ve
   mal, es lo primero a revisar (el valor está en `intranet_api_auth_manager."Routes_frontend".svg`, fila «Eventos»).
-- **Que la sección «Eventos» aparezca solo con permisos de pantallas:** no existe una tabla de permisos por sección, así que se asume que el menú
-  muestra una sección cuando el grupo tiene al menos una de sus pantallas, como ocurre con Sorteos.
 - `registro-rutas-eventos.sql` se probó contra una **réplica** de las tablas del menú. Tres tablas (`Permissions_groups`, `Routes_frontend`,
-  `Routes_frontend_child`) se copiaron del DDL real; de `Routes_backend`, `Routes_backend_child` y las dos `Permissions_groups_routes_*` solo se conocen las
-  columnas que ya usan los scripts de Sorteos. Por eso se ejecuta primero sobre la **copia** de la base: si algo difiere, falla sin cambiar nada.
+  `Routes_frontend_child`) se copiaron del DDL real y de las dos `Permissions_groups_routes_*` se conocen sus columnas reales; de `Routes_backend` y
+  `Routes_backend_child` solo las columnas que ya usan los scripts de Sorteos. Por eso se ejecuta primero sobre la **copia** de la base: si algo difiere, falla sin cambiar nada.
 - La pantalla dentro del layout real de `intranet-frontend` (se probó en el layout de desarrollo) y el rol `eventos_app` real de producción
   (se verificó con un rol local de permisos equivalentes).

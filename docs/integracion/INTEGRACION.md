@@ -43,6 +43,9 @@ con el mismo formato que las demás secciones) con dos pantallas, y los grupos d
 | `EVENTOS_ADMIN` (organizadores) | «Registrar Evento» (`/eventsreg`) y «Asistencia de Eventos» | las 9 (añade `create`, `finalize`, `attendees/upload`) |
 | `ADMINISTRADOR` | las dos pantallas | las 9 |
 
+- **El menú exige DOS permisos por grupo:** el de cada **pantalla** (`Permissions_groups_routes_child_entity`, columna `routes_frontend_childId`) y el de la
+  **sección** (`Permissions_groups_routes_entity`, columna `routes_frontendId`). Con solo el de las pantallas el menú **no muestra la sección**. El script
+  crea los dos.
 - **El rol decide qué pantallas ve la persona; el permiso por sede decide de qué sedes ve eventos.** Hacen falta los dos: una persona de
   `EVENTOS` sin sede asignada no ve ningún evento.
 - **Cambiar quién puede crear eventos** (p. ej. dar el acceso a otro grupo) = editar la lista `_grupos_admin` al inicio del script y volverlo a
